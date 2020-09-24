@@ -44,9 +44,13 @@ func init() {
 
 
 func main(){
+	// NewRouter returns a new router instance.
 	router := mux.NewRouter()
 
-	router.HandleFunc("/songs", addItem).Methods("POST")
+	// HandleFunc registers a new route with a matcher for the URL path.
+	// Methods adds a matcher for HTTP methods.
+	// It accepts a sequence of one or more methods to be matched (eg: GET, POST, PUT ...)
+	router.HandleFunc("/songs", addSong).Methods("POST")
 	router.HandleFunc("/songs", getAllSongs).Methods("GET")
 	router.HandleFunc("/songs/{id}", getSong).Methods("GET")
 	router.HandleFunc("/songs/{id}", updateSong).Methods("PUT")
@@ -57,86 +61,30 @@ func main(){
 }
 
 
-func deleteSong(w http.ResponseWriter, req *http.Request){
-	//get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
-		return
-	}
+func addSong(w http.ResponseWriter, req *http.Request){
+	//routeVariable := mux.Vars(req)["item"]
 
-	//err checking
-	if id >= len(songs) {
-		w.WriteHeader(404)
-		w.Write([]byte("ID is out of range"))
-		return
-	}
+	// get song value from JSON body
+	var newSong Song
+	json.NewDecoder(req.Body).Decode(&newSong)
 
-	//Delete the song from the slice
-	songs = append(songs[:id], songs[id+1:]...)
-
-	w.WriteHeader(200)
-}
-
-func patchSong(w http.ResponseWriter, req *http.Request){
-	//get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
-		return
-	}
-
-	//err checking
-	if id >= len(songs) {
-		w.WriteHeader(404)
-		w.Write([]byte("ID is out of range"))
-		return
-	}
-
-	//get the current value
-	song := &songs[id]
-	json.NewDecoder(req.Body).Decode(song)
+	songs = append(songs, newSong)
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(*song)
+	json.NewEncoder(w).Encode(songs)
 }
 
 
-func updateSong(w http.ResponseWriter, req *http.Request){
-	//get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
-		return
-	}
-
-	//err checking
-	if id >= len(songs) {
-		w.WriteHeader(404)
-		w.Write([]byte("ID is out of range"))
-		return
-	}
-
-	//get the value from JSON body
-	var updatedSong Song
-	json.NewDecoder(req.Body).Decode(&updatedSong)
-
-	songs[id] = updatedSong
-
+func getAllSongs(w http.ResponseWriter, req *http.Request){
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(updatedSong)
+	json.NewEncoder(w).Encode(songs)
 }
 
 
 func getSong(w http.ResponseWriter, req *http.Request){
 	//get the ID of the song from the route parameter
 	var idParam string = mux.Vars(req)["id"]
+	// convert the song ID into an int
 	id, err :=strconv.Atoi(idParam)
 	if err != nil{
 		w.WriteHeader(400)
@@ -157,21 +105,93 @@ func getSong(w http.ResponseWriter, req *http.Request){
 	json.NewEncoder(w).Encode(song)
 }
 
-func getAllSongs(w http.ResponseWriter, req *http.Request){
+
+func updateSong(w http.ResponseWriter, req *http.Request){
+	// get ID of the song from the root parameter
+	var idParam string = mux.Vars(req)["id"]
+	// convert the song ID into an int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("ID can't be converted to an int"))
+		return
+	}
+
+	// err checking
+	if id >= len(songs) {
+		w.WriteHeader(404)
+		w.Write([]byte("ID is out of range"))
+		return
+	}
+
+	// get the value from JSON body
+	var updatedSong Song
+	json.NewDecoder(req.Body).Decode(&updatedSong)
+
+	songs[id] = updatedSong
+
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(songs)
+	json.NewEncoder(w).Encode(updatedSong)
 }
 
 
-func addItem(w http.ResponseWriter, req *http.Request){
-	//routeVariable := mux.Vars(req)["item"]
+func patchSong(w http.ResponseWriter, req *http.Request){
+	// get ID of the song from the root parameter
+	var idParam string = mux.Vars(req)["id"]
+	// convert the song ID into an int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("ID can't be converted to an int"))
+		return
+	}
 
-	// get item value from JSON body
-	var newSong Song
-	json.NewDecoder(req.Body).Decode(&newSong)
+	// err checking
+	if id >= len(songs) {
+		w.WriteHeader(404)
+		w.Write([]byte("ID is out of range"))
+		return
+	}
 
-	songs = append(songs, newSong)
+	//get the current value
+	song := &songs[id]
+	json.NewDecoder(req.Body).Decode(song)
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(songs)
+	json.NewEncoder(w).Encode(*song)
 }
+
+
+
+func deleteSong(w http.ResponseWriter, req *http.Request){
+	// get ID of the song from the root parameter
+	var idParam string = mux.Vars(req)["id"]
+	// convert the song ID into an int
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		w.WriteHeader(400)
+		w.Write([]byte("ID can't be converted to an int"))
+		return
+	}
+
+	// err checking
+	if id >= len(songs) {
+		w.WriteHeader(404)
+		w.Write([]byte("ID is out of range"))
+		return
+	}
+
+	// Delete the song from the slice
+	songs = append(songs[:id], songs[id+1:]...)
+
+	w.WriteHeader(200)
+}
+
+
+
+
+
+
+
+
+
