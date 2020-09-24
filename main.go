@@ -107,7 +107,7 @@ func patchSong(w http.ResponseWriter, req *http.Request){
 
 
 func updateSong(w http.ResponseWriter, req *http.Request){
-	//get ID of the post from the root parameter
+	//get ID of the song from the root parameter
 	var idParam string = mux.Vars(req)["id"]
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -148,7 +148,7 @@ func getSong(w http.ResponseWriter, req *http.Request){
 	//id == index into a specific database
 	if id >= len(songs) {
 		w.WriteHeader(404)
-		w.Write([]byte("No post found with specified ID"))
+		w.Write([]byte("No song found with specified ID"))
 		return
 	}
 	song := songs[id]
