@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Web Development with Go">
+    <meta name="author" content="Victor Barrantes">
+    <title>TCP Server for HTTP</title>
+</head>
+<body>
+<strong>{{.Name}}</strong><br>
+<a href="/">index</a><br>
+<a href="/about">about</a><br>
+<a href="/contact">contact</a><br>
+<a href="/apply">apply</a><br>
+{{if .Form}}
+    <form method="POST" action="/apply">
+        <input type="text" name="fname" placeholder="first name" autofocus autocomplete="off">
+        <input type="submit" name="submit-btn" value="Submit">
+    </form>
+{{end}}
+</body>
+</html>
