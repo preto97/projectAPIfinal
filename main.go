@@ -1,105 +1,171 @@
 package main
 
 import (
-	"bytes"
+	"database/sql"
 	"encoding/json"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"html/template"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 )
 
-
-// Person is a struct that represents a person in this application
-type Person struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
-}
-
 // Song is a struct that represents a single song
 type Song struct {
+	ID 		 string `json:"id"`
 	Title 	 string `json:"title"`
 	Duration string `json:"duration"`
-	Singer 	 Person `json:"singer"`
+	Singer 	 string `json:"singer"`
 }
-
-// songs is an array of Song
-var songs []Song = []Song{}
 
 
 var (
-	tpl *template.Template
-	tplName   = "index.gohtml" //template listed at the end.
-	finalHTML *bytes.Buffer  //an io.Writer for template.Execute()
-	gotForm   = true
-	noForm    = false
+	// lenSong will store the len(songs). songs is an array of Song (songs []Song)
+	lenSong int
+	db *sql.DB
+	err error
 )
-
-func init() {
-	tpl = template.Must(template.ParseFiles(tplName))
-	finalHTML = bytes.NewBuffer([]byte(""))
-}
 
 
 func main(){
+
+	// Open the DB: "testAPI" with the username "root"
+	db, err = sql.Open("mysql", "root:@/testAPI")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
 	// NewRouter returns a new router instance.
 	router := mux.NewRouter()
 
 	// HandleFunc registers a new route with a matcher for the URL path.
 	// Methods adds a matcher for HTTP methods.
-	// It accepts a sequence of one or more methods to be matched (eg: GET, POST, PUT ...)
+	// It accepts a sequence of one or more methods to be matched (eg: GET, POST, PUT, PATCH, DELETE ...)
+	router.HandleFunc("/", general).Methods("GET")
 	router.HandleFunc("/songs", addSong).Methods("POST")
 	router.HandleFunc("/songs", getAllSongs).Methods("GET")
 	router.HandleFunc("/songs/{id}", getSong).Methods("GET")
 	router.HandleFunc("/songs/{id}", updateSong).Methods("PUT")
-	router.HandleFunc("/songs/{id}", patchSong).Methods("PATCH")
 	router.HandleFunc("/songs/{id}", deleteSong).Methods("DELETE")
+	router.HandleFunc("/songss/delAll", deleteAll).Methods("GET")
 
+	// starting the localhost:8080
 	http.ListenAndServe(":8080", router)
 }
 
+// This function is the main pattern: "http://localhost:8080/"
+func general(w http.ResponseWriter, req *http.Request) {
+	w.Write([]byte (`<h1>You are in the main page, please add pattern:<br> - "/songs"         -> to see all songs <br>
+																				  - "/songs/{id}"    -> to see a specific song <br>
+																				  - "/songss/delAll" -> to delete all songs stored </h1>`))
+}
 
+
+// This function add a song with method POST from JSON body
 func addSong(w http.ResponseWriter, req *http.Request){
-	//routeVariable := mux.Vars(req)["item"]
+	// stmt = statement, is a prepared statement
+	// Prepare -> Execute, are used for actions which DOESN'T returns any rows
+	stmt, err := db.Prepare("INSERT INTO songs(title, duration, singer) VALUES (?, ?, ?)")
+	if err != nil {
+		panic(err.Error())
+	}
 
-	// get song value from JSON body
-	var newSong Song
-	json.NewDecoder(req.Body).Decode(&newSong)
+	// body transform the data stored in req.body JSON to []byte
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		panic(err.Error())
+	}
 
-	songs = append(songs, newSong)
+	// Extract data from req.body in keyVal
+	keyVal := make(map[string] string)
+	json.Unmarshal(body, &keyVal)
+	title := keyVal["title"]
+	duration := keyVal["duration"]
+	singer := keyVal["singer"]
 
-	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(songs)
+	// Execute the prepared syntax with the values set into req.body
+	_,err = stmt.Exec(title, duration, singer)
+	if err !=nil {
+		panic(err.Error())
+	}
+
+	// This message will print into ResponeWriter
+	fmt.Fprintf(w, "New song was added")
 }
 
 
+// This function get all songs stored into DB songs
 func getAllSongs(w http.ResponseWriter, req *http.Request){
+	// songs is an array of Song
+	var songs []Song
+	// Query is uesed for actions wihch returns rows
+	// Store all records in result from DB songs, if any
+	result, err := db.Query("SELECT * from songs")
+	if err != nil {
+		panic(err.Error())
+	}
+	defer result.Close()
+
+	// Checking each record stored in result and append it to songs
+	for result.Next() {
+		var song Song
+		err := result.Scan(&song.ID, &song.Title, &song.Duration, &song.Singer)
+		if err != nil {
+			panic(err.Error())
+		}
+		songs = append(songs, song)
+	}
+	lenSong = len(songs)
+
+	// setting the header “Content-Type” to “application/json”.
 	w.Header().Set("Content-type", "application/json")
+	// encode songs to JSON and send them to interface
 	json.NewEncoder(w).Encode(songs)
 }
 
 
+// This function get a specified song with method POST from JSON body
 func getSong(w http.ResponseWriter, req *http.Request){
-	//get the ID of the song from the route parameter
-	var idParam string = mux.Vars(req)["id"]
+	// params is a map from route paramete
+	params := mux.Vars(req)
+
+	// result store the record that satisfies the condition from Query
+	result, err := db.Query("SELECT * FROM songs WHERE id = ?", params["id"])
+	if err !=nil {
+		panic(err.Error())
+	}
+	defer result.Close()
+
 	// convert the song ID into an int
-	id, err :=strconv.Atoi(idParam)
-	if err != nil{
+	id, err := strconv.Atoi(params["id"])
+	if err != nil {
+		// 400 indicates server was unable to process the request sent by the client due to invalid syntax
 		w.WriteHeader(400)
-		w.Write([]byte("ID could not be converter to integer"))
+		w.Write([]byte("ID could not be converted to int"))
 		return
 	}
 
-	//err checking
-	//id == index into a specific database
-	if id >= len(songs) {
+	// checking if id exists in my DB
+	if ((id > lenSong) || (id < 1)) {
+		// 404 indicates page not found
 		w.WriteHeader(404)
 		w.Write([]byte("No song found with specified ID"))
 		return
 	}
-	song := songs[id]
+
+	var song Song
+
+	// Scan copies the columns in the current row into the values pointed
+	// at by dest. The number of values in dest must be the same as the
+	// number of columns in Rows.
+	for result.Next() {
+		err := result.Scan(&song.ID, &song.Title, &song.Duration, &song.Singer)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
 
 	w.Header().Set("Content-type", "application/json")
 	json.NewEncoder(w).Encode(song)
@@ -107,91 +173,99 @@ func getSong(w http.ResponseWriter, req *http.Request){
 
 
 func updateSong(w http.ResponseWriter, req *http.Request){
-	// get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
+	// params is a map from route parameter
+	params := mux.Vars(req)
+
 	// convert the song ID into an int
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(params["id"])
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
+		w.Write([]byte("ID could not be converted to int"))
 		return
 	}
 
-	// err checking
-	if id >= len(songs) {
+	// checking if id exists in my DB
+	if ((id > lenSong) || (id < 1)) {
 		w.WriteHeader(404)
 		w.Write([]byte("ID is out of range"))
 		return
 	}
 
-	// get the value from JSON body
-	var updatedSong Song
-	json.NewDecoder(req.Body).Decode(&updatedSong)
-
-	songs[id] = updatedSong
-
-	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(updatedSong)
-}
-
-
-func patchSong(w http.ResponseWriter, req *http.Request){
-	// get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
-	// convert the song ID into an int
-	id, err := strconv.Atoi(idParam)
+	stmt, err := db.Prepare("UPDATE songs SET title = ?, duration=?, singer =? WHERE id= ?")
 	if err != nil {
-		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
-		return
+		panic(err.Error())
 	}
 
-	// err checking
-	if id >= len(songs) {
-		w.WriteHeader(404)
-		w.Write([]byte("ID is out of range"))
-		return
+	// body transform the data stored in req.body JSON to []byte
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		panic(err.Error())
 	}
 
-	//get the current value
-	song := &songs[id]
-	json.NewDecoder(req.Body).Decode(song)
+	// Extract data from req.body in keyVal
+	keyVal := make (map[string] string)
+	json.Unmarshal(body, &keyVal)
+	newTitle := keyVal["title"]
+	newDuration := keyVal["duration"]
+	newSinger := keyVal["singer"]
 
-	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(*song)
+	// Execute the prepared syntax with the values set into req.body
+	_,err = stmt.Exec(newTitle, newDuration, newSinger, params["id"])
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// This message will print into ResponeWriter
+	fmt.Fprintf(w,"Song with ID = %s was updated", params["id"])
 }
 
 
 
 func deleteSong(w http.ResponseWriter, req *http.Request){
-	// get ID of the song from the root parameter
-	var idParam string = mux.Vars(req)["id"]
+	// params is a map from route parameter
+	params := mux.Vars(req)
+
 	// convert the song ID into an int
-	id, err := strconv.Atoi(idParam)
+	id, err := strconv.Atoi(params["id"])
 	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("ID can't be converted to an int"))
+		w.Write([]byte("ID could not be converted to int"))
 		return
 	}
 
-	// err checking
-	if id >= len(songs) {
+	// checking if id exists in my DB
+	if ((id > lenSong) || (id < 1)) {
 		w.WriteHeader(404)
 		w.Write([]byte("ID is out of range"))
 		return
 	}
 
-	// Delete the song from the slice
-	songs = append(songs[:id], songs[id+1:]...)
+	stmt, err := db.Prepare("DELETE FROM songs WHERE id = ?")
+	if err != nil {
+		panic(err.Error())
+	}
 
+	_, err =stmt.Exec(params["id"])
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// 200 - OK success status response code indicates that the request has succeeded
 	w.WriteHeader(200)
+	fmt.Fprintf(w, "Post with ID = %s was deleted", params["id"])
 }
 
 
+func deleteAll (w http.ResponseWriter, req *http.Request) {
+	stmt, err := db.Query("TRUNCATE TABLE songs")
+	if err !=nil {
+		panic(err.Error())
+	}
+	defer stmt.Close()
 
+	// 200 - OK success status response code indicates that the request has succeeded
+	w.WriteHeader(200)
 
-
-
-
-
-
+	// This message will print into ResponeWriter
+	w.Write([]byte("All records from table songs have been deleted"))
+}
