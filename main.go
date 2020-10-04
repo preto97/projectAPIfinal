@@ -13,22 +13,20 @@ import (
 
 // Song is a struct that represents a single song
 type Song struct {
-	ID 		 string `json:"id"`
-	Title 	 string `json:"title"`
+	ID       string `json:"id"`
+	Title    string `json:"title"`
 	Duration string `json:"duration"`
-	Singer 	 string `json:"singer"`
+	Singer   string `json:"singer"`
 }
-
 
 var (
 	// lenSong will store the len(songs). songs is an array of Song (songs []Song)
 	lenSong int
-	db *sql.DB
-	err error
+	db      *sql.DB
+	err     error
 )
-
-
-func main(){
+// RANDOM ID !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+func main() {
 
 	// Open the DB: "testAPI" with the username "root"
 	db, err = sql.Open("mysql", "root:@/testAPI")
@@ -62,9 +60,8 @@ func general(w http.ResponseWriter, req *http.Request) {
 																				  - "/songss/delAll" -> to delete all songs stored </h1>`))
 }
 
-
 // This function add a song with method POST from JSON body
-func addSong(w http.ResponseWriter, req *http.Request){
+func addSong(w http.ResponseWriter, req *http.Request) {
 	// stmt = statement, is a prepared statement
 	// Prepare -> Execute, are used for actions which DOESN'T returns any rows
 	stmt, err := db.Prepare("INSERT INTO songs(title, duration, singer) VALUES (?, ?, ?)")
@@ -79,15 +76,15 @@ func addSong(w http.ResponseWriter, req *http.Request){
 	}
 
 	// Extract data from req.body in keyVal
-	keyVal := make(map[string] string)
+	keyVal := make(map[string]string)
 	json.Unmarshal(body, &keyVal)
 	title := keyVal["title"]
 	duration := keyVal["duration"]
 	singer := keyVal["singer"]
 
 	// Execute the prepared syntax with the values set into req.body
-	_,err = stmt.Exec(title, duration, singer)
-	if err !=nil {
+	_, err = stmt.Exec(title, duration, singer)
+	if err != nil {
 		panic(err.Error())
 	}
 
@@ -95,9 +92,8 @@ func addSong(w http.ResponseWriter, req *http.Request){
 	fmt.Fprintf(w, "New song was added")
 }
 
-
 // This function get all songs stored into DB songs
-func getAllSongs(w http.ResponseWriter, req *http.Request){
+func getAllSongs(w http.ResponseWriter, req *http.Request) {
 	// songs is an array of Song
 	var songs []Song
 	// Query is uesed for actions wihch returns rows
@@ -125,15 +121,14 @@ func getAllSongs(w http.ResponseWriter, req *http.Request){
 	json.NewEncoder(w).Encode(songs)
 }
 
-
 // This function get a specified song with method POST from JSON body
-func getSong(w http.ResponseWriter, req *http.Request){
+func getSong(w http.ResponseWriter, req *http.Request) {
 	// params is a map from route paramete
 	params := mux.Vars(req)
 
 	// result store the record that satisfies the condition from Query
 	result, err := db.Query("SELECT * FROM songs WHERE id = ?", params["id"])
-	if err !=nil {
+	if err != nil {
 		panic(err.Error())
 	}
 	defer result.Close()
@@ -148,7 +143,7 @@ func getSong(w http.ResponseWriter, req *http.Request){
 	}
 
 	// checking if id exists in my DB
-	if ((id > lenSong) || (id < 1)) {
+	if (id > lenSong) || (id < 1) {
 		// 404 indicates page not found
 		w.WriteHeader(404)
 		w.Write([]byte("No song found with specified ID"))
@@ -171,8 +166,7 @@ func getSong(w http.ResponseWriter, req *http.Request){
 	json.NewEncoder(w).Encode(song)
 }
 
-
-func updateSong(w http.ResponseWriter, req *http.Request){
+func updateSong(w http.ResponseWriter, req *http.Request) {
 	// params is a map from route parameter
 	params := mux.Vars(req)
 
@@ -185,7 +179,7 @@ func updateSong(w http.ResponseWriter, req *http.Request){
 	}
 
 	// checking if id exists in my DB
-	if ((id > lenSong) || (id < 1)) {
+	if (id > lenSong) || (id < 1) {
 		w.WriteHeader(404)
 		w.Write([]byte("ID is out of range"))
 		return
@@ -203,25 +197,23 @@ func updateSong(w http.ResponseWriter, req *http.Request){
 	}
 
 	// Extract data from req.body in keyVal
-	keyVal := make (map[string] string)
+	keyVal := make(map[string]string)
 	json.Unmarshal(body, &keyVal)
 	newTitle := keyVal["title"]
 	newDuration := keyVal["duration"]
 	newSinger := keyVal["singer"]
 
 	// Execute the prepared syntax with the values set into req.body
-	_,err = stmt.Exec(newTitle, newDuration, newSinger, params["id"])
+	_, err = stmt.Exec(newTitle, newDuration, newSinger, params["id"])
 	if err != nil {
 		panic(err.Error())
 	}
 
 	// This message will print into ResponeWriter
-	fmt.Fprintf(w,"Song with ID = %s was updated", params["id"])
+	fmt.Fprintf(w, "Song with ID = %s was updated", params["id"])
 }
 
-
-
-func deleteSong(w http.ResponseWriter, req *http.Request){
+func deleteSong(w http.ResponseWriter, req *http.Request) {
 	// params is a map from route parameter
 	params := mux.Vars(req)
 
@@ -234,7 +226,7 @@ func deleteSong(w http.ResponseWriter, req *http.Request){
 	}
 
 	// checking if id exists in my DB
-	if ((id > lenSong) || (id < 1)) {
+	if (id > lenSong) || (id < 1) {
 		w.WriteHeader(404)
 		w.Write([]byte("ID is out of range"))
 		return
@@ -245,7 +237,7 @@ func deleteSong(w http.ResponseWriter, req *http.Request){
 		panic(err.Error())
 	}
 
-	_, err =stmt.Exec(params["id"])
+	_, err = stmt.Exec(params["id"])
 	if err != nil {
 		panic(err.Error())
 	}
@@ -255,10 +247,9 @@ func deleteSong(w http.ResponseWriter, req *http.Request){
 	fmt.Fprintf(w, "Post with ID = %s was deleted", params["id"])
 }
 
-
-func deleteAll (w http.ResponseWriter, req *http.Request) {
+func deleteAll(w http.ResponseWriter, req *http.Request) {
 	stmt, err := db.Query("TRUNCATE TABLE songs")
-	if err !=nil {
+	if err != nil {
 		panic(err.Error())
 	}
 	defer stmt.Close()
