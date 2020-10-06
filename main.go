@@ -25,7 +25,7 @@ var (
 	db      *sql.DB
 	err     error
 )
-// RANDOM ID !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 func main() {
 
 	// Open the DB: "testAPI" with the username "root"
