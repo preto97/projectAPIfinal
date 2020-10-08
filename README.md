@@ -23,7 +23,7 @@
   // In the future I want to extend this project, I want to implement all actions that executs in Postman to specific buttons into the web browser.
   // Also I want to change the update action, beacuse for now it has PUT request and I want to change it to PATCH, for keep 
   // the old datas, if I don't change all fields in the update body.
-  // As well, I want to convert/change the "duration" field type from string to time.
+  // As well, I want to convert/change the "duration" field type from string to time. 
   
            
   
