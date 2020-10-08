@@ -9,7 +9,7 @@
   // The appliation start a localhost:8080 which can accept different patterns that makes specific actions to table "songs":
   // Some actions can run from the web browser and the others one, runs just from the Postman app.
   // So, to the localhost:8080 you can add the following patterns (this runs from web browser because have GET method request):   
-  //  - "/songs"          -> to see all songs stored in the tabel "songs"
+  //  - "/songs"          -> to see all songs stored in the tabel "songs" 
   //  - "/songs/{id}"     -> to see a specific song, by the id
   //  - "/songss/delAll"  -> to delete all songs stored in table "songs"
   // Attention! All the next patterns doesn't have GET method request, like above. So, you can run them just from Postman:
